@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "beamprop"
+version = "0.1.0"
+description = "Beam propagation method (BPM) and NLS demos with figure scripts (a)-(f)."
+authors = [{name="Brooks Christensen"}]
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+  "numpy>=1.22",
+  "scipy>=1.10",
+  "matplotlib>=3.6"
+]
+
+[project.scripts]
+beamprop-figs = "beamprop.cli:main"
