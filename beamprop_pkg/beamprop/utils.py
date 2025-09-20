@@ -58,7 +58,42 @@ def auto_x_roi(Ixz, x, frac=0.92, pad_pixels=6):
     return (x_min, x_max), slice(lo_idx, hi_idx)
 
 
-def safe_log10(I, floor_rel=1e-6):
-    m = np.max(I)
+def safe_log10(In, floor_rel=1e-6):
+    m = np.max(In)
     eps = m * floor_rel + 1e-30
-    return np.log10(np.maximum(I, eps))
+    return np.log10(np.maximum(In, eps))
+
+
+def raised_cosine_gate(z, z0, w, ramp):
+    """
+    Smooth 0→1→0 gate centered at z0 with full width w and cosine ramps of width `ramp`.
+    Returns g(z) in [0,1]. When ramp→0, this tends to a rect.
+    """
+    z1 = z0 - w / 2.0
+    z2 = z0 + w / 2.0
+    g = np.zeros_like(z, dtype=float)
+
+    if isinstance(z, np.ndarray) or isinstance(z, list):
+        # up-ramp on [z1, z1+ramp]
+        up = (z >= z1) & (z < z1 + ramp)
+        g[up] = 0.5 * (1 - np.cos(np.pi * (z[up] - z1) / ramp))
+
+        # flat top on [z1+ramp, z2-ramp]
+        flat = (z >= z1 + ramp) & (z <= z2 - ramp)
+        g[flat] = 1.0
+
+        # down-ramp on (z2-ramp, z2]
+        down = (z > z2 - ramp) & (z <= z2)
+        g[down] = 0.5 * (1 + np.cos(np.pi * (z[down] - (z2 - ramp)) / ramp))
+
+    if isinstance(z, float):
+        if z <= z1 or z >= z2:
+            return 0.0
+        elif z >= z1 + ramp or z <= z2 - ramp:
+            return 1.0
+        elif z1 < z < z1 + ramp:
+            return 0.5 * (1 - np.cos(np.pi * (z - z1) / ramp))
+        elif z2 - ramp < z < z2:
+            return 0.5 * (1 + np.cos(np.pi * (z - (z2 - ramp)) / ramp))
+
+    return g

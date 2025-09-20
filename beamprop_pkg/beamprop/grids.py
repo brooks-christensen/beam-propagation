@@ -1,31 +1,33 @@
 from dataclasses import dataclass
 import numpy as np
 
+
 @dataclass
 class Grid1D:
-    x_span: float   # physical width [m]
-    nx: int         # number of samples
+    x_span: float  # physical width [m]
+    nx: int  # number of samples
 
     def arrays(self):
         dx = self.x_span / self.nx
-        x = (np.arange(self.nx) - self.nx//2) * dx
+        x = (np.arange(self.nx) - self.nx // 2) * dx
         return x, dx
+
 
 @dataclass
 class Grid2D:
-    x_span: float   # width [m]
-    y_span: float   # height [m]
+    x_span: float  # width [m]
+    z_span: float  # height [m]
     nx: int
-    ny: int
+    nz: int
 
     def arrays(self):
-        dx = self.x_span / self.nx
-        dy = self.y_span / self.ny
-        x = (np.arange(self.nx) - self.nx//2) * dx
-        y = (np.arange(self.ny) - self.ny//2) * dy
-        return x, y, dx, dy
+        dx = self.x_span / (self.nx - 1)
+        dz = self.z_span / (self.nz - 1)
+        x = (np.arange(self.nx) - self.nx // 2) * dx
+        z = (np.arange(self.nz)) * dz  # - self.nz // 2
+        return x, z, dx, dz
 
     def mesh(self):
-        x, y, dx, dy = self.arrays()
-        X, Y = np.meshgrid(x, y, indexing="ij")
-        return X, Y, dx, dy
+        x, z, dx, dz = self.arrays()
+        X, Z = np.meshgrid(x, z, indexing="ij")
+        return X, Z, dx, dz
