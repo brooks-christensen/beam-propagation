@@ -28,10 +28,6 @@ class BPM2D:
         # 1D transverse kx for the 1-D FFT
         self.kx = 2 * np.pi * np.fft.fftshift(np.fft.fftfreq(self.nx, d=self.dx))
         self.kz = np.sqrt(np.maximum(0.0, self.k0**2 - self.kx**2))
-        # fig, ax = plt.subplots(figsize=(6, 4))
-        # plt.plot(self.kz)
-        # plt.savefig(Path.cwd() / "beamprop_pkg" / "out" / "test.png")
-        # plt.close(fig)
 
     def propagate(self, E0, n2=0.0, store_every=0) -> Tuple[np.ndarray, np.ndarray]:
         """

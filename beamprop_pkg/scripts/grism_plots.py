@@ -12,6 +12,7 @@ from beamprop_pkg.beamprop.absorbers import absorbing_field_1d
 base_path = Path.cwd() / "beamprop_pkg" / "out"
 out1 = base_path / "grism_geometry.png"
 out2 = base_path / "grism_propagation.png"
+out_png = base_path / "grism.png"
 
 
 # define physical constants
@@ -42,32 +43,7 @@ assert np.isclose(dz, dz__)
 
 # create 2D refractive index inhomogeneity mesh grid
 # same dimensions as X, Z
-# nIN = np.zeros(X.shape)
 nIN = grin_prism_dn_xz(X, Z, Lx, z_center=z0, z_width=zW)
-
-
-# generate and store figure of 2D grism refractive index inhomogeneity
-extent = (
-    float(Z.min() * 10**6),
-    float(Z.max() * 10**6),
-    float(X.min() * 10**6),
-    float(X.max() * 10**6),
-)
-fig, ax = plt.subplots(figsize=(6, 4))
-im = ax.imshow(
-    nIN,
-    origin="lower",
-    extent=extent,
-    aspect="auto",
-    cmap="viridis",
-    interpolation="nearest",
-)
-cbar = fig.colorbar(im, ax=ax, label="intensity")
-ax.set_xlabel("z [um]")
-ax.set_ylabel("x [um]")
-ax.set_title("|E(x)|²")
-fig.savefig(out1, dpi=300, bbox_inches="tight")
-plt.close(fig)
 
 
 # perform propagation
@@ -80,19 +56,56 @@ abs_mask = absorbing_field_1d(Nx, wAbs, gamma)
 bpm_obj = BPM2D(lambda0, dx, Nx, Nz, dz, abs_mask, nIN)
 Eout, snapshots = bpm_obj.propagate(E0, n2, store_every=1)
 
-# generate and store 2D figure of beam propagation intensity
-fig, ax = plt.subplots(figsize=(6, 4))
-im = ax.imshow(
-    snapshots,
+# If snapshots is (Nz, Nx), transpose so shape matches nIN (Nx, Nz)
+snap = snapshots if snapshots.shape == nIN.shape else snapshots.T
+
+# common extent: horizontal = z [µm], vertical = x [µm]
+extent = (
+    float(Z.min() * 1e6),
+    float(Z.max() * 1e6),  # z-axis (x of plot)
+    float(X.min() * 1e6),
+    float(X.max() * 1e6),  # x-axis (y of plot)
+)
+
+fig, axs = plt.subplots(1, 2, figsize=(12, 4), constrained_layout=True, sharey=True)
+
+# --- Left: Δn(x,z) (grism) ---
+im0 = axs[0].imshow(
+    nIN,
     origin="lower",
     extent=extent,
     aspect="auto",
     cmap="viridis",
     interpolation="nearest",
 )
-cbar = fig.colorbar(im, ax=ax, label="intensity")
-ax.set_xlabel("z [um]")
-ax.set_ylabel("x [um]")
-ax.set_title("|E(x)|²")
-fig.savefig(out2, dpi=300, bbox_inches="tight")
+axs[0].set_title("Δn(x,z)")
+axs[0].set_xlabel("z [µm]")
+axs[0].set_ylabel("x [µm]")
+fig.colorbar(im0, ax=axs[0], label="Δn")
+
+# --- Right: |E(x,z)|² (propagation) ---
+im1 = axs[1].imshow(
+    snap,
+    origin="lower",
+    extent=extent,
+    aspect="auto",
+    cmap="viridis",
+    interpolation="nearest",
+)
+axs[1].set_title("|E(x,z)|²")
+axs[1].set_xlabel("z [µm]")
+fig.colorbar(im1, ax=axs[1], label="intensity")
+
+# === Prism/grism boundaries (z0 center [m], zW width [m]) ===
+z_start_um = (z0 - zW / 2.0) * 1e6
+z_end_um = (z0 + zW / 2.0) * 1e6
+
+# dashed guide lines
+axs[1].axvline(z_start_um, ls="--", lw=1.8, color="w", alpha=0.9)
+axs[1].axvline(z_end_um, ls="--", lw=1.8, color="w", alpha=0.9)
+
+# optional: lightly shade the active slab
+axs[1].axvspan(z_start_um, z_end_um, facecolor="w", alpha=0.08)
+
+fig.savefig(out_png, dpi=300, bbox_inches="tight")
 plt.close(fig)

@@ -45,3 +45,14 @@ def grin_prism_dn_xz(X, Z, Lx, amp=0.07, z_center=1050e-6, z_width=1900e-6):
 def grin_prism_n_xz(X, Z, n0=1.5, **kw):
     """Absolute index map n(x,z) = n0 + Δn(x,z)."""
     return n0 + grin_prism_dn_xz(X, Z, **kw)
+
+
+def grin_lens_dn_xz(X, Z, Lx, amp=0.07, z_center=1300e-6, z_width=2400e-6):
+    """
+    Δn(x,z) = amp * cos(2*pi*x/Lx) * rect((z - z_center)/z_width)
+    X, Z: meshgrids in meters (shape [nx, nz])
+    Lx: full x-extent (e.g., 200e-6 for x ∈ [-100e-6, +100e-6])
+    """
+    cos_ramp = amp * np.cos(2 * np.pi * X / Lx)
+    window = rect((Z - z_center) / z_width)
+    return cos_ramp * window
