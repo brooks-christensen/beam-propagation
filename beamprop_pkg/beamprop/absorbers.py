@@ -28,8 +28,12 @@ def absorbing_field_1d(N: int, w: int, gamma: float) -> np.ndarray:
 
     rl = np.array(range(w, -1, -1))
     rr = np.array(range(N - 1, N - w - 2, -1))
+    print(-rl[:5])
+    print(-rl[-5:])
+    print(rr[:5])
+    print(rr[-5:])
 
-    al = abf(1 - rl)
+    al = abf(-rl)
     am = [1] * (N - 2 * w - 2)
     ar = abf(N - 1 - rr)
 
