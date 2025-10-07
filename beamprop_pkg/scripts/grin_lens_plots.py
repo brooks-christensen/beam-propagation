@@ -17,20 +17,20 @@ out_png = base_path / "grin_lens.png"
 lambda0 = 1e-6
 Nx = 512 + 1
 Nz = 300 + 1
-dx = 2e-6
+dx = 1e-6
 dz = 10e-6
 Lx = dx * (Nx - 1)
 Lz = dz * (Nz - 1)
 wAbs: int = 50  # number of points to include at the edges of absorber
-gamma = 1.0  # strength of absorber [0.0, 1.0]
+gamma = 1.0  # strength of absorber at the boundary [0.0, 1.0]
 n2 = 0.0
 w0 = 300e-6  # width of Gaussian input beam
-z0 = 1050e-6
-zW = 1900e-6
+z0 = 1300e-6
+zW = 2400e-6
 
 
 # create grids
-grid_obj = Grid2D(Lx, Lz, Nx, Nz)
+grid_obj = Grid2D(Lx, Lz, Nx, Nz, center=False)
 X, Z, dx_, dz_ = grid_obj.mesh()
 x, z, dx__, dz__ = grid_obj.arrays()
 assert np.isclose(dx, dx_)
@@ -41,14 +41,14 @@ assert np.isclose(dz, dz__)
 
 # create 2D refractive index inhomogeneity mesh grid
 # same dimensions as X, Z
-nIN = grin_lens_dn_xz(X, Z, Lx, z_center=z0, z_width=zW)
+nIN = grin_lens_dn_xz(X, Z, Lx, z_center=z0, z_width=zW, x_center=Lx / 2)
 
 
 # perform propagation
 E0 = gaussian_beam_1d(
     x,
     w0,
-    0.0,
+    Lx / 2,
 )
 abs_mask = absorbing_field_1d(Nx, wAbs, gamma)
 bpm_obj = BPM2D(lambda0, dx, Nx, Nz, dz, abs_mask, nIN)

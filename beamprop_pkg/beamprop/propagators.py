@@ -47,7 +47,9 @@ class BPM2D:
             nIN = (self.n_field[:, it] + self.n_field[:, j2]) / 2
 
             # refract
-            Er = fft1c(E * np.exp(-1j * self.k0 * nIN * self.dz))
+            Er = fft1c(
+                E * np.exp(-1j * self.k0 * (nIN + n2 * np.abs(E) ** 2) * self.dz)
+            )
 
             # diffract
             E = ifft1c(Er * np.exp(-1j * self.kz * self.dz))
