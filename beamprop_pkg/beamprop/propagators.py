@@ -17,17 +17,13 @@ class BPM2D:
     nz: int
     dz: float  # step [m]
     absorber_mask: np.ndarray  # [nx] mask (<=1)
-    n_field: np.ndarray  # [nx, nz] refractive index (>=1)
-    # gate_func: Callable
-    # z0: float
-    # w: float
-    # ramp: float
+    n_field: np.ndarray  # [nx, nz] inhomogeneous contribution to refractive index (>=1)
+    n_ref: np.ndarray  # [nx, nz] DC contribution to refractive index (>=1)
 
     def __post_init__(self):
         self.k0 = k0_from_lambda(self.wavelength)
         # 1D transverse kx for the 1-D FFT
         self.kx = 2 * np.pi * np.fft.fftshift(np.fft.fftfreq(self.nx, d=self.dx))
-        self.kz = np.sqrt(np.maximum(0.0, self.k0**2 - self.kx**2))
 
     def propagate(self, E0, n2=0.0, store_every=0) -> Tuple[np.ndarray, np.ndarray]:
         """
@@ -52,6 +48,8 @@ class BPM2D:
             )
 
             # diffract
+            self.k = self.n_ref[:, it] * self.k0
+            self.kz = np.sqrt(np.maximum(0.0, self.k**2 - self.kx**2))
             E = ifft1c(Er * np.exp(-1j * self.kz * self.dz))
 
             # Apply absorber

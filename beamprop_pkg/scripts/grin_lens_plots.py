@@ -2,7 +2,11 @@ import matplotlib.pyplot as plt
 from pathlib import Path
 import numpy as np
 
-from beamprop_pkg.beamprop.fields import grin_lens_dn_xz, gaussian_beam_1d
+from beamprop_pkg.beamprop.fields import (
+    grin_lens_dn_xz_cosine,
+    gaussian_beam_1d,
+    nref_grid_from_rod,
+)
 from beamprop_pkg.beamprop.grids import Grid2D
 from beamprop_pkg.beamprop.propagators import BPM2D
 from beamprop_pkg.beamprop.absorbers import absorbing_field_1d
@@ -41,7 +45,10 @@ assert np.isclose(dz, dz__)
 
 # create 2D refractive index inhomogeneity mesh grid
 # same dimensions as X, Z
-nIN = grin_lens_dn_xz(X, Z, Lx, z_center=z0, z_width=zW, x_center=Lx / 2)
+nIN = grin_lens_dn_xz_cosine(
+    X, Z, z_center=z0, z_width=zW, n_glass=1.5, dn0=0.07, x_center=Lx / 2
+)
+nRef = nref_grid_from_rod(X, Z, z0, zW, n_glass=1.5)
 
 
 # perform propagation
@@ -51,7 +58,7 @@ E0 = gaussian_beam_1d(
     Lx / 2,
 )
 abs_mask = absorbing_field_1d(Nx, wAbs, gamma)
-bpm_obj = BPM2D(lambda0, dx, Nx, Nz, dz, abs_mask, nIN)
+bpm_obj = BPM2D(lambda0, dx, Nx, Nz, dz, abs_mask, nIN, nRef)
 Eout, snapshots = bpm_obj.propagate(E0, n2, store_every=1)
 
 # If snapshots is (Nz, Nx), transpose so shape matches nIN (Nx, Nz)
@@ -83,14 +90,14 @@ fig.colorbar(im0, ax=axs[0], label="Δn")
 
 # --- Right: |E(x,z)|² (propagation) ---
 im1 = axs[1].imshow(
-    snap,
+    np.log(snap),
     origin="lower",
     extent=extent,
     aspect="auto",
     cmap="viridis",
     interpolation="nearest",
 )
-axs[1].set_title("|E(x,z)|²")
+axs[1].set_title("ln(|E(x,z)|²)")
 axs[1].set_xlabel("z [µm]")
 fig.colorbar(im1, ax=axs[1], label="intensity")
 
