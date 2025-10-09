@@ -97,3 +97,139 @@ def raised_cosine_gate(z, z0, w, ramp):
             return 0.5 * (1 + np.cos(np.pi * (z - (z2 - ramp)) / ramp))
 
     return g
+
+
+def kappa_from_fwhm(fwhm, k):
+    alpha = 2.0 * np.arccosh(np.sqrt(2.0)) / fwhm  # ≈ 1.76274 / fwhm
+    return (alpha * alpha) / k
+
+
+# def ln_safe(A):
+#     return np.log(np.maximum(A, 1e-20))
+
+
+def ln_safe(Ix, rel_floor=1e-6):
+    m = float(np.nanmax(Ix))
+    eps = m * rel_floor + 1e-30
+    return np.log(np.maximum(Ix, eps))
+
+
+def propagate(E0, bpm_obj, n2):
+    Eout, _ = bpm_obj.propagate(E0, n2, store_every=0)
+    return Eout, None
+
+
+def kx_grid(Nx, dx):
+    return 2 * np.pi * np.fft.fftshift(np.fft.fftfreq(Nx, d=dx))  # [1/m]
+
+
+def order_kx(k, Lambda, theta_inc_rad, m):
+    # thin transmission grating: kx_m = k*sin(theta_inc) + m*K
+    K = 2 * np.pi / Lambda
+    return k * np.sin(theta_inc_rad) + m * K
+
+
+def power_in_order(Eout, dx, k, Lambda, theta_inc_rad, m, dkx_bin=0.6):
+    """
+    Integrate |Ê(kx)|^2 in a small window around the m-th order peak.
+    dkx_bin is in units of K (i.e., 0.6 means ±0.6*K/2 half-width).
+    """
+    Nx = Eout.size
+    kx = kx_grid(Nx, dx)
+    Ef = np.fft.fftshift(np.fft.fft(np.fft.ifftshift(Eout), norm="ortho"))
+    S = np.abs(Ef) ** 2
+
+    K = 2 * np.pi / Lambda
+    kxm = order_kx(k, Lambda, theta_inc_rad, m)
+
+    w = dkx_bin * K / 2
+    sel = (kx >= kxm - w) & (kx <= kxm + w)
+    return S[sel].sum(), S.sum()  # (power in order, total power)
+
+
+def run_one(
+    angle_deg,
+    build_input,
+    propagate,
+    dx,
+    k,
+    Lambda,
+    x,
+    Lz,
+    bpm_obj,
+    n2,
+    orders=(-1, 0, +1),
+):
+    """
+    angle_deg -> E0 via build_input(angle_deg),
+    Eout via propagate(E0),
+    returns dict of power fractions per order and a suggested score.
+    """
+    theta = np.deg2rad(angle_deg)
+    E0 = build_input(angle_deg, x, k, Lz / 2, 0.0)
+    Eout, _ = propagate(E0, bpm_obj, n2)
+
+    frac = {}
+    # Ptot = None
+    for m in orders:
+        Pm, Pt = power_in_order(Eout, dx, k, Lambda, theta, m)
+        frac[m] = Pm / Pt
+        # Ptot = Pt
+    score_single = frac.get(+1, 0.0) - 0.5 * (frac.get(0, 0.0) + frac.get(-1, 0.0))
+    score_bragg_min = -frac.get(+1, 0.0)  # minimize +1 efficiency
+    return frac, score_single, score_bragg_min
+
+
+def sdoOpt(build_input, dx, k, Lambda, x, Lz, bpm_obj, n2):
+    # coarse grid then refine
+    cand = np.linspace(-15, +15, 121)  # degrees; set your expected range
+    best = None
+    for a in cand:
+        frac, score, _ = run_one(
+            a, build_input, propagate, dx, k, Lambda, x, Lz, bpm_obj, n2
+        )
+        if (best is None) or (score > best[0]):
+            best = (score, a, frac)
+
+    best_score, best_angle, best_frac = best
+    print(
+        "Single-order optimum:", f"angle ≈ {best_angle:.2f}°", f"fractions {best_frac}"
+    )
+
+    # refine around best_angle
+    fine = np.linspace(best_angle - 1.0, best_angle + 1.0, 41)
+    for a in fine:
+        frac, score, _ = run_one(
+            a, build_input, propagate, dx, k, Lambda, x, Lz, bpm_obj, n2
+        )
+        if score > best_score:
+            best_score, best_angle, best_frac = score, a, frac
+    print(f"Refined: {best_angle}° {best_frac}")
+    return best_angle
+
+
+def braggMismatchOptA(build_input, dx, k, Lambda, x, Lz, bpm_obj, n2):
+    # minimize +1 mode
+    cand = np.linspace(-15, +15, 121)  # degrees; set your expected range
+    best = None
+    for a in cand:
+        frac, *_ = run_one(a, build_input, propagate, dx, k, Lambda, x, Lz, bpm_obj, n2)
+        eta1 = frac.get(+1, 0.0)
+        if (best is None) or (eta1 < best[0]):  # more negative is better
+            best = (eta1, a, frac)
+    print(f"Bragg mismatch angle (min η+1): {best[1]}° {best[2]}")
+    return best[1]
+
+
+def braggMismatchOptB(build_input, dx, k, Lambda, x, Lz, bpm_obj, n2):
+    # Target efficiency η_{+1} = η* (e.g., 10%): pick the angle whose frac[+1] is closest to η*
+    cand = np.linspace(-15, +15, 121)  # degrees; set your expected range
+    target = 0.10
+    best = None
+    for a in cand:
+        frac, *_ = run_one(a, build_input, propagate, dx, k, Lambda, x, Lz, bpm_obj, n2)
+        err = abs(frac.get(+1, 0.0) - target)
+        if (best is None) or (err < best[0]):
+            best = (err, a, frac)
+    print(f"Angle for η+1≈10%: {best[1]}° {best[2]}")
+    return best[1]

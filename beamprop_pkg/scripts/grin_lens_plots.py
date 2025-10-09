@@ -74,7 +74,7 @@ extent = (
 
 fig, axs = plt.subplots(1, 2, figsize=(12, 4), constrained_layout=True, sharey=True)
 
-# --- Left: Δn(x,z) (grism) ---
+# --- Left: Δn(x,z) (grin lens geometry) ---
 im0 = axs[0].imshow(
     nIN,
     origin="lower",
