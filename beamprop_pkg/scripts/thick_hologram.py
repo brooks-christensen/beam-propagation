@@ -75,7 +75,7 @@ bpm_obj = BPM2D(lambda0, dx, Nx, Nz, dz, abs_mask, nIN, nRef)
 #     tilt_deg_sdo,
 # )
 # Eout_sdo, snapshots_sdo = bpm_obj.propagate(E0_sdo, n2, store_every=1)
-best_angle_sdo = sdoOpt(build_input, dx, k, Lambda, x, Lz, bpm_obj, n2)
+best_angle_sdo = sdoOpt(build_input, dx, k, Lambda, x, Lz, bpm_obj, n2, lambda0)
 Eout_sdo, snapshots_sdo = bpm_obj.propagate(
     build_input(best_angle_sdo, x, k, Lz / 2, 0.0), n2, store_every=1
 )
@@ -227,7 +227,6 @@ else:
 kx = 2 * np.pi * np.fft.fftshift(np.fft.fftfreq(Eout_sdo.size, d=dx))  # [1/m]
 axs[2, 1].plot(kx * 1e-6, y)  # kx in 1/µm
 axs[2, 1].set_xlabel(r"$k_x$ [$\mathrm{\mu m^{-1}}$]")
-axs[2, 1].set_xlabel("z [µm]")
 
 
 fig.savefig(out_png, dpi=300, bbox_inches="tight")

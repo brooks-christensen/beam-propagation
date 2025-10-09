@@ -180,7 +180,7 @@ def run_one(
     return frac, score_single, score_bragg_min
 
 
-def sdoOpt(build_input, dx, k, Lambda, x, Lz, bpm_obj, n2):
+def sdoOpt(build_input, dx, k, Lambda, x, Lz, bpm_obj, n2, lambda0):
     # coarse grid then refine
     cand = np.linspace(-15, +15, 121)  # degrees; set your expected range
     best = None
@@ -205,6 +205,8 @@ def sdoOpt(build_input, dx, k, Lambda, x, Lz, bpm_obj, n2):
         if score > best_score:
             best_score, best_angle, best_frac = score, a, frac
     print(f"Refined: {best_angle}° {best_frac}")
+    theta_theory = np.rad2deg(np.arcsin(lambda0 / (2 * Lambda)))  # ~4.30 deg
+    print("External Littrow (theory):", theta_theory, "deg")
     return best_angle
 
 
