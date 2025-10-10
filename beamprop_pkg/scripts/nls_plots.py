@@ -16,23 +16,30 @@ from beamprop_pkg.beamprop.absorbers import absorbing_field_1d
 base_path = Path.cwd() / "beamprop_pkg" / "out"
 out_png = base_path / "nls.png"
 log_flag = False
+xConf = "B"
 
 
 # define physical constants
 lambda0 = 1e-6
 k0 = 2 * np.pi / lambda0
-Nx = 1024 + 1
+if xConf == "A":
+    Nx = 512 + 1
+    dx = 2e-6
+elif xConf == "B":
+    Nx = 1024 + 1
+    dx = 1e-6
 Nz = 300 + 1
-dx = 1e-6
 dz = 10e-6
 Lx = dx * (Nx - 1)
 Lz = dz * (Nz - 1)
 wAbs: int = 40  # number of points to include at the edges of absorber
-gamma = 0.15  # strength of absorber at the boundary [0.0, 1.0]
+gamma = 1.0  # strength of absorber at the boundary [0.0, 1.0]
 n2 = 1e-3  # strength of nonlinearity
 w_gauss = 30e-6  # width of Gaussian input beam
 n_glass = 1.5
 k = n_glass * k0
+Efactor = 1.105  #  np.sqrt(2.5 / 8.5) # factor matches node spacing from homework, physical behavior is different???
+# n2 /= Efactor * Efactor
 
 
 # create grids
@@ -48,7 +55,7 @@ assert np.isclose(dz, dz__)
 # create 2D refractive index inhomogeneity mesh grid
 # same dimensions as X, Z
 nIN = np.zeros(X.shape)
-nRef = np.ones(X.shape)  #  * n_glass
+nRef = np.ones(X.shape)  # * n_glass
 
 
 # create input fields
@@ -63,6 +70,7 @@ E0_soliton = soliton_profile(x, k, k0, n2, kappa)
 # Ps = np.trapezoid(np.abs(E0_soliton) ** 2, x)
 # E0_gauss *= np.sqrt(Ps / Pg)
 # E0_gauss *= np.sqrt(2.5 / 5.7)
+E0_gauss *= Efactor
 
 
 # perform unstable propagation

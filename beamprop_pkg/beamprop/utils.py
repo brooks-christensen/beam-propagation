@@ -183,12 +183,12 @@ def run_one(
 def sdoOpt(build_input, dx, k, Lambda, x, Lz, bpm_obj, n2, lambda0):
     # coarse grid then refine
     cand = np.linspace(-15, +15, 121)  # degrees; set your expected range
-    best = None
+    best = (None, 0.0, None)
     for a in cand:
         frac, score, _ = run_one(
             a, build_input, propagate, dx, k, Lambda, x, Lz, bpm_obj, n2
         )
-        if (best is None) or (score > best[0]):
+        if (best[0] is None) or (score > best[0]):
             best = (score, a, frac)
 
     best_score, best_angle, best_frac = best
@@ -213,11 +213,11 @@ def sdoOpt(build_input, dx, k, Lambda, x, Lz, bpm_obj, n2, lambda0):
 def braggMismatchOptA(build_input, dx, k, Lambda, x, Lz, bpm_obj, n2):
     # minimize +1 mode
     cand = np.linspace(-15, +15, 121)  # degrees; set your expected range
-    best = None
+    best = (None, 0.0, 0.0)
     for a in cand:
         frac, *_ = run_one(a, build_input, propagate, dx, k, Lambda, x, Lz, bpm_obj, n2)
         eta1 = frac.get(+1, 0.0)
-        if (best is None) or (eta1 < best[0]):  # more negative is better
+        if (best[0] is None) or (eta1 < best[0]):  # more negative is better
             best = (eta1, a, frac)
     print(f"Bragg mismatch angle (min η+1): {best[1]}° {best[2]}")
     return best[1]
@@ -227,7 +227,7 @@ def braggMismatchOptB(build_input, dx, k, Lambda, x, Lz, bpm_obj, n2):
     # Target efficiency η_{+1} = η* (e.g., 10%): pick the angle whose frac[+1] is closest to η*
     cand = np.linspace(-15, +15, 121)  # degrees; set your expected range
     target = 0.10
-    best = None
+    best = (None, 0.0, 0.0)
     for a in cand:
         frac, *_ = run_one(a, build_input, propagate, dx, k, Lambda, x, Lz, bpm_obj, n2)
         err = abs(frac.get(+1, 0.0) - target)
